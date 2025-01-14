@@ -2,6 +2,19 @@
 setlocal enabledelayedexpansion
 
 rem Ensure all arguments are properly handled
+if "%~1"=="" (
+    echo Error: CONFIG argument not provided.
+    exit /b 1
+)
+if "%~2"=="" (
+    echo Error: DLL_DIR argument not provided.
+    exit /b 1
+)
+if "%~3"=="" (
+    echo Error: OUTPUT_DIR argument not provided.
+    exit /b 1
+)
+
 set CONFIG=%~1
 set DLL_DIR=%~2
 set OUTPUT_DIR=%~3
