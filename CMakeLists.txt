@@ -1,11 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.8)
 
-# Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-endif()
-
 project("Baddaria")
 
 # Create 'libraries' directory if it doesn't exist
@@ -51,17 +45,18 @@ set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/libraries")
 # Set Ogg_DIR to the path containing OggConfig.cmake
 set(Ogg_DIR "${CMAKE_SOURCE_DIR}/libraries/SFML-3.0.0/lib/cmake/Ogg")
 
-# Example: Find SFML
+# Find SFML package
 find_package(SFML 3 COMPONENTS System Window Graphics Audio REQUIRED)
 
-# Link SFML static libraries with full paths
+# Link SFML libraries
 target_link_libraries(Baddaria PRIVATE SFML::Graphics SFML::Window SFML::Audio SFML::System)
 
+# Set C++ standard
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Baddaria PROPERTY CXX_STANDARD 20)
 endif()
 
-# Check if using dynamic libraries (SFML_STATIC_LIBRARIES is OFF)
+# Handle dynamic vs static linking
 if (NOT SFML_STATIC_LIBRARIES)
   message(STATUS "Using dynamic libraries. Setting up DLL copying...")
 
@@ -69,21 +64,41 @@ if (NOT SFML_STATIC_LIBRARIES)
   set(OUTPUT_DIR_DEBUG "${CMAKE_BINARY_DIR}")
   set(OUTPUT_DIR_RELEASE "${CMAKE_BINARY_DIR}")
 
-# Define the batch script path
-set(COPY_DLL_SCRIPT "${CMAKE_SOURCE_DIR}/copy_sfml_dlls.bat")
+  # Define the batch script path
+  set(COPY_DLL_SCRIPT "${CMAKE_SOURCE_DIR}/copy_sfml_dlls.bat")
 
-# Make the batch script executable on Windows
-if (WIN32)
-  execute_process(COMMAND attrib +x "${COPY_DLL_SCRIPT}")
+  # Make the batch script executable on Windows
+  if (WIN32)
+    execute_process(COMMAND attrib +x "${COPY_DLL_SCRIPT}")
+  endif()
+
+  # Add a post-build command to run the batch script
+  add_custom_command(TARGET Baddaria POST_BUILD
+    COMMAND "${COPY_DLL_SCRIPT}" "$<CONFIG>" "\"${SFML_EXTRACT_DIR}/bin\"" "\"$<IF:$<CONFIG:Debug>,${OUTPUT_DIR_DEBUG},${OUTPUT_DIR_RELEASE}>\""
+    COMMENT "Running batch script to copy SFML DLL files..."
+  )
 endif()
 
-# Add a post-build command to run the batch script
-add_custom_command(TARGET Baddaria POST_BUILD
-  COMMAND "${COPY_DLL_SCRIPT}" "$<CONFIG>" "\"${SFML_EXTRACT_DIR}/bin\"" "\"$<IF:$<CONFIG:Debug>,${OUTPUT_DIR_DEBUG},${OUTPUT_DIR_RELEASE}>\""
-  COMMENT "Running batch script to copy SFML DLL files..."
-)
-
-
+# Compiler-specific configurations
+if (MSVC)
+  # MSVC-specific configurations
+  message(STATUS "Using MSVC compiler...")
+  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "ProgramDatabase")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  # Clang-specific configurations (if needed)
+  message(STATUS "Using Clang compiler...")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # MinGW-specific configurations (if needed)
+  message(STATUS "Using MinGW compiler...")
+else()
+  message(STATUS "Using an unknown compiler.")
 endif()
 
-# TODO: Add tests and install targets if needed.
+# Optionally, handle different library types (static vs. dynamic) based on the compiler
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  # MSVC handles static/dynamic linking differently, so we can specify that if needed
+  set(SFML_STATIC_LIBRARIES OFF CACHE BOOL "Build SFML as a dynamic library (MSVC)")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  # Use dynamic by default or specify behavior here
+  set(SFML_STATIC_LIBRARIES OFF CACHE BOOL "Build SFML as a dynamic library (MinGW/Clang)")
+endif()

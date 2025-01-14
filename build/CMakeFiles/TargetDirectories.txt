@@ -1,0 +1,3 @@
+D:/Game Development/Baddaria/build/CMakeFiles/Baddaria.dir
+D:/Game Development/Baddaria/build/CMakeFiles/ALL_BUILD.dir
+D:/Game Development/Baddaria/build/CMakeFiles/ZERO_CHECK.dir
